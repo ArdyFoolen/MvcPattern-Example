@@ -42,7 +42,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ApplicationThread.cs" />
     <Compile Include="Enums.cs" />
+    <Compile Include="IApplicationThread.cs" />
     <Compile Include="IVehicleControl.cs" />
     <Compile Include="IVehicleModel.cs" />
     <Compile Include="IVehicleView.cs" />

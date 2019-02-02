@@ -14,7 +14,7 @@ using System.Reflection;
 
 namespace MVCPattern.WinForm
 {
-    public partial class Form1 : Form, IVehicleView
+    public partial class Form1 : Form, IVehicleView, IApplicationThread
     {
         public Form1()
         {
@@ -205,6 +205,33 @@ namespace MVCPattern.WinForm
             factory.VehicleControl.AddObserver(this);
             factory.VehicleControl.InitializeObservers();
             factory.VehicleControl.RequestAccelerate(0); // To display that car is parked
+        }
+
+        private bool closeThread = false;
+        delegate void CloseDelegate();
+        public void CloseApplication()
+        {
+            this.closeThread = true;
+            if (this.InvokeRequired)
+            {
+                CloseDelegate close = new CloseDelegate(CloseApplication);
+                this.Invoke(close, null);
+            }
+            else
+                this.Close();
+        }
+
+        public string ApplicationId { get { return "WinFormApplication"; } }
+
+        private ApplicationThread applicationThread;
+        public ApplicationThread ApplicationThread { get { return this.applicationThread; } set { this.applicationThread = value; this.applicationThread.Register(this); } }
+
+        private void Form1_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            if (!closeThread && this.ApplicationThread != null)
+            {
+                this.ApplicationThread.CloseAllThreads(this.ApplicationId);
+            }
         }
     }
 }

@@ -21,7 +21,7 @@ namespace MVCPattern.Console
         internal static extern Boolean FreeConsole();
     }
 
-    public class ConsoleThread : IVehicleView
+    public class ConsoleThread : IVehicleView, IApplicationThread
     {
         public ConsoleThread()
         {
@@ -39,7 +39,7 @@ namespace MVCPattern.Console
         }
 
         public string Result { get; set; }
-        
+
         public void ReadLine()
         {
             NativeMethods.AllocConsole();
@@ -49,111 +49,140 @@ namespace MVCPattern.Console
                                      "      (BT,Name, Max Speed, Max Reverse Speed, Max Turn Speed, SlowPoke(T,F)) : Truck\n" +
                                      "      (BS,Name, Max Speed, Max Reverse Speed, Max Turn Speed, SlowPoke(T,F)) : Sportscar");
 
-            while (Result.ToLower() != "q")
+            while (Result.ToLower() != "q" && !closeThread)
             {
-                Result = System.Console.ReadLine();
-
-                int amount;
-                if (int.TryParse(Result, out amount))
+                ConsoleKeyInfo info;
+                ConsoleKey key = ConsoleKey.Spacebar;
+                do
                 {
-                    if (amount >= 0)
+                    if (System.Console.KeyAvailable)
                     {
-                        if (this.CanAccelerate)
+                        info = System.Console.ReadKey(false);
+                        key = info.Key;
+                        if (key != ConsoleKey.Enter)
+                            Result += info.KeyChar;
+                    }
+                } while (!closeThread && key != ConsoleKey.Enter);
+
+                if (!closeThread)
+                {
+                    int amount;
+                    if (int.TryParse(Result, out amount))
+                    {
+                        if (amount >= 0)
                         {
-                            ControlFactory.GetSingleton().VehicleControl.RequestAccelerate(amount);
+                            if (this.CanAccelerate)
+                            {
+                                ControlFactory.GetSingleton().VehicleControl.RequestAccelerate(amount);
+                            }
+                        }
+                        else
+                        {
+                            if (this.CanDecelerate)
+                            {
+                                ControlFactory.GetSingleton().VehicleControl.RequestDecelerate(Math.Abs(amount));
+                            }
                         }
                     }
                     else
                     {
-                        if (this.CanDecelerate)
+                        if (Result.ToLower() == "l")
                         {
-                            ControlFactory.GetSingleton().VehicleControl.RequestDecelerate(Math.Abs(amount));
+                            if (this.CanTurn)
+                            {
+                                ControlFactory.GetSingleton().VehicleControl.RequestTurn(RelativeDirection.Left);
+                            }
+                        }
+                        if (Result.ToLower() == "r")
+                        {
+                            if (this.CanTurn)
+                            {
+                                ControlFactory.GetSingleton().VehicleControl.RequestTurn(RelativeDirection.Right);
+                            }
+                        }
+
+                        if (Result.ToLower() == "dt")
+                        {
+                            ControlFactory dtFactory = ControlFactory.GetSingleton();
+                            dtFactory.CreateVehicleControl(typeof(SlowPokeControl), new Truck("Trucky"));
+                            dtFactory.VehicleControl.AddObserver(this);
+                            dtFactory.VehicleControl.InitializeObservers();
+                            dtFactory.VehicleControl.RequestAccelerate(0);
+                        }
+                        if (Result.ToLower() == "ds")
+                        {
+                            ControlFactory dsFactory = ControlFactory.GetSingleton();
+                            dsFactory.CreateVehicleControl(typeof(VehicleControl), new SportsCar("Sporty"));
+                            dsFactory.VehicleControl.AddObserver(this);
+                            dsFactory.VehicleControl.InitializeObservers();
+                            dsFactory.VehicleControl.RequestAccelerate(0);
+                        }
+
+                        string[] sList = Result.Split(new char[] { ',' });
+                        if (sList.Count() == 6)
+                        {
+                            int maxSpeed;
+                            int maxReverseSpeed;
+                            int maxTurnSpeed;
+                            int.TryParse(sList[2], out maxSpeed);
+                            int.TryParse(sList[3], out maxReverseSpeed);
+                            int.TryParse(sList[4], out maxTurnSpeed);
+                            if (sList[0].ToLower() == "bt")
+                            {
+                                ControlFactory btFactory = ControlFactory.GetSingleton();
+                                if (sList[5].ToLower() == "t")
+                                {
+                                    btFactory.CreateVehicleControl(typeof(SlowPokeControl), new Truck(maxSpeed, maxTurnSpeed, Math.Abs(maxReverseSpeed) * -1, sList[1]));
+                                }
+                                else
+                                {
+                                    btFactory.CreateVehicleControl(typeof(VehicleControl), new Truck(maxSpeed, maxTurnSpeed, Math.Abs(maxReverseSpeed) * -1, sList[1]));
+                                }
+                                btFactory.VehicleControl.AddObserver(this);
+                                btFactory.VehicleControl.InitializeObservers();
+                                btFactory.VehicleControl.RequestAccelerate(0);
+                            }
+                            if (sList[0].ToLower() == "bs")
+                            {
+                                ControlFactory bsFactory = ControlFactory.GetSingleton();
+                                if (sList[5].ToLower() == "t")
+                                {
+                                    bsFactory.CreateVehicleControl(typeof(SlowPokeControl), new SportsCar(maxSpeed, maxTurnSpeed, Math.Abs(maxReverseSpeed) * -1, sList[1]));
+                                }
+                                else
+                                {
+                                    bsFactory.CreateVehicleControl(typeof(VehicleControl), new SportsCar(maxSpeed, maxTurnSpeed, Math.Abs(maxReverseSpeed) * -1, sList[1]));
+                                }
+                                bsFactory.VehicleControl.AddObserver(this);
+                                bsFactory.VehicleControl.InitializeObservers();
+                                bsFactory.VehicleControl.RequestAccelerate(0);
+                            }
                         }
                     }
                 }
-                else
-                {
-                    if (Result.ToLower() == "l")
-                    {
-                        if (this.CanTurn)
-                        {
-                            ControlFactory.GetSingleton().VehicleControl.RequestTurn(RelativeDirection.Left);
-                        }
-                    }
-                    if (Result.ToLower() == "r")
-                    {
-                        if (this.CanTurn)
-                        {
-                            ControlFactory.GetSingleton().VehicleControl.RequestTurn(RelativeDirection.Right);
-                        }
-                    }
-
-                    if (Result.ToLower() == "dt")
-                    {
-                        ControlFactory dtFactory = ControlFactory.GetSingleton();
-                        dtFactory.CreateVehicleControl(typeof(SlowPokeControl), new Truck("Trucky"));
-                        dtFactory.VehicleControl.AddObserver(this);
-                        dtFactory.VehicleControl.InitializeObservers();
-                        dtFactory.VehicleControl.RequestAccelerate(0);
-                    }
-                    if (Result.ToLower() == "ds")
-                    {
-                        ControlFactory dsFactory = ControlFactory.GetSingleton();
-                        dsFactory.CreateVehicleControl(typeof(VehicleControl), new SportsCar("Sporty"));
-                        dsFactory.VehicleControl.AddObserver(this);
-                        dsFactory.VehicleControl.InitializeObservers();
-                        dsFactory.VehicleControl.RequestAccelerate(0);
-                    }
-
-                    string[] sList = Result.Split(new char[] { ',' });
-                    if (sList.Count() == 6)
-                    {
-                        int maxSpeed;
-                        int maxReverseSpeed;
-                        int maxTurnSpeed;
-                        int.TryParse(sList[2], out maxSpeed);
-                        int.TryParse(sList[3], out maxReverseSpeed);
-                        int.TryParse(sList[4], out maxTurnSpeed);
-                        if (sList[0].ToLower() == "bt")
-                        {
-                            ControlFactory btFactory = ControlFactory.GetSingleton();
-                            if (sList[5].ToLower() == "t")
-                            {
-                                btFactory.CreateVehicleControl(typeof(SlowPokeControl), new Truck(maxSpeed, maxTurnSpeed, Math.Abs(maxReverseSpeed) * -1, sList[1]));
-                            }
-                            else
-                            {
-                                btFactory.CreateVehicleControl(typeof(VehicleControl), new Truck(maxSpeed, maxTurnSpeed, Math.Abs(maxReverseSpeed) * -1, sList[1]));
-                            }
-                            btFactory.VehicleControl.AddObserver(this);
-                            btFactory.VehicleControl.InitializeObservers();
-                            btFactory.VehicleControl.RequestAccelerate(0);
-                        }
-                        if (sList[0].ToLower() == "bs")
-                        {
-                            ControlFactory bsFactory = ControlFactory.GetSingleton();
-                            if (sList[5].ToLower() == "t")
-                            {
-                                bsFactory.CreateVehicleControl(typeof(SlowPokeControl), new SportsCar(maxSpeed, maxTurnSpeed, Math.Abs(maxReverseSpeed) * -1, sList[1]));
-                            }
-                            else
-                            {
-                                bsFactory.CreateVehicleControl(typeof(VehicleControl), new SportsCar(maxSpeed, maxTurnSpeed, Math.Abs(maxReverseSpeed) * -1, sList[1]));
-                            }
-                            bsFactory.VehicleControl.AddObserver(this);
-                            bsFactory.VehicleControl.InitializeObservers();
-                            bsFactory.VehicleControl.RequestAccelerate(0);
-                        }
-                    }
-                }
-
             }
 
             ControlFactory factory = ControlFactory.GetSingleton();
             factory.VehicleControl.RemoveObserver(this);
 
             NativeMethods.FreeConsole();
+
+            if (!closeThread && this.ApplicationThread != null)
+            {
+                this.ApplicationThread.CloseAllThreads(this.ApplicationId);
+            }
         }
+
+        private bool closeThread = false;
+        public void CloseApplication()
+        {
+            this.closeThread = true;
+        }
+
+        public string ApplicationId { get { return "ConsoleApplication"; } }
+
+        private ApplicationThread applicationThread;
+        public ApplicationThread ApplicationThread { get { return this.applicationThread; } set { this.applicationThread = value; this.applicationThread.Register(this); } }
 
         public void Initialize()
         {

@@ -6,6 +6,7 @@ using System.Windows.Forms;
 using MVCPattern.Model;
 using System.Reflection;
 using System.Threading;
+using MVCPattern.Interfaces;
 
 namespace MVCPattern.WinForm
 {
@@ -17,37 +18,40 @@ namespace MVCPattern.WinForm
         [STAThread]
         public static void Main()
         {
-            StartKMteller();
-            StartConsole();
-            Start();
+            ApplicationThread applicationThread = new ApplicationThread();
+            StartKMteller(applicationThread);
+            StartConsole(applicationThread);
+            Start(applicationThread);
         }
 
-        public static void Start()
+        public static void Start(ApplicationThread applicationThread)
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new Form1());
+            Form1 form = new Form1();
+            form.ApplicationThread = applicationThread;
+            Application.Run(form);
         }
 
-        private delegate void consoleStart();
-        static void StartConsole()
+        private delegate void consoleStart(ApplicationThread applicationThread);
+        static void StartConsole(ApplicationThread applicationThread)
         {
             Assembly assembly = Assembly.LoadFrom("MVCPattern.Console.exe");
             Type type = assembly.GetType("MVCPattern.Console.Console");
             MethodInfo consoleMethod = type.GetMethod("Start");
             consoleStart consoleStart = (consoleStart)consoleMethod.CreateDelegate(typeof(consoleStart));
-            Thread consoleThread = new Thread(() => consoleStart());
+            Thread consoleThread = new Thread(() => consoleStart(applicationThread));
             consoleThread.Start();
         }
 
-        private delegate void kmTellerStart();
-        static void StartKMteller()
+        private delegate void kmTellerStart(ApplicationThread applicationThread);
+        static void StartKMteller(ApplicationThread applicationThread)
         {
             Assembly assembly = Assembly.LoadFrom("MVCPattern.KMTeller.exe");
             Type type = assembly.GetType("MVCPattern.KMTeller.Program");
             MethodInfo winFormMethod = type.GetMethod("Start");
             kmTellerStart kmTellerStart = (kmTellerStart)winFormMethod.CreateDelegate(typeof(kmTellerStart));
-            Thread winThread = new Thread(() => kmTellerStart());
+            Thread winThread = new Thread(() => kmTellerStart(applicationThread));
             winThread.Start();
         }
     }
